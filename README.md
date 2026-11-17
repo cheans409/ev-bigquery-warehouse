@@ -1,97 +1,83 @@
-# Washington EV Population Warehouse
+# Washington EV Market Analysis with BigQuery
 
-A Google BigQuery analytics engineering project that turns an existing EV population dataset into a tested warehouse and three reporting views. It fixes a concrete reporting defect: the old fact table contained 713,043 rows for 299,705 unique vehicles. The corrected model preserves one row per vehicle.
+An SQL and cloud data warehousing project exploring nearly **300,000 electric vehicles** in Washington's vehicle registration dataset. I used Google BigQuery to organize the data, check its accuracy, and analyze where EVs are concentrated and how manufacturer share varies by model year.
 
-**Stack:** Google BigQuery · GoogleSQL · dimensional modeling · SQL assertions · partitioning and clustering
+**Tools:** Google BigQuery · GoogleSQL · Git
 
-**Highlights:** 299,705 vehicles modeled · 413,338 excess fact rows eliminated · six integrity checks passed · three analytical views deployed
+## What I wanted to understand
 
-## Query scan comparison
+- Which manufacturers account for the largest share of EVs across model years?
+- Which Washington counties have the most EVs?
+- How common are fully electric vehicles compared with plug-in hybrids?
+- How can the data be structured to support reliable, efficient analysis?
 
-A King County query covering model years 2021–2024 scanned **10.05 MB through the staging view versus 4.19 MB through the partitioned fact table**, approximately **58.3% less data scanned** in the observed run. This measures scan volume, not billing or latency savings. See [benchmark methodology and limitations](docs/performance.md).
+## Key findings
 
-## What this project answers
+The dataset contains **299,705 vehicles**, including **298,916 located in Washington**. The findings below use the Washington records.
 
-1. How does manufacturer share differ across model-year cohorts?
-2. Where are Washington's registered EVs concentrated, and how does the BEV/PHEV mix vary?
-3. How complete is reported electric range, and when would averages be misleading?
-4. Can a partitioned reporting table reduce the data scanned for a common analytical query?
+| Finding | Result |
+|---|---|
+| EVs are concentrated in King County | 144,257 vehicles — **48.26%** of the Washington total |
+| Fully electric vehicles dominate the mix | **80.67%** are battery electric vehicles; the rest are plug-in hybrids |
+| Tesla has a smaller share among newer model years | **56.03%** of model-year 2020 vehicles versus **26.37%** of model-year 2025 vehicles |
+| Range information is often missing | **65.49%** have no positive reported range, making coverage important when comparing averages |
 
-## Verified results
+Model-year comparisons describe vehicles in this dataset snapshot, rather than annual sales. [Read the full analysis →](docs/findings.md)
 
-| Measure | Result |
-|---|---:|
-| Vehicles in source and corrected fact table | 299,705 |
-| Vehicles with state = WA | 298,916 |
-| Vehicle configurations | 207 |
-| Distinct location/utility combinations | 1,751 |
-| BEV share of Washington EVs | 80.67% |
-| Washington vehicles with unknown cleaned range | 65.49% |
-| King County share of Washington EVs | 48.26% |
-| Tesla share of 2020 model-year cohort | 56.03% |
-| Tesla share of 2025 model-year cohort | 26.37% |
+## What I built
 
-These are results from the uploaded snapshot, not live statewide totals. The snapshot's original extraction date has not been established. Model year is a vehicle attribute, not a purchase or registration date. The Tesla comparison therefore describes the composition of vehicles still in this snapshot; it does not measure annual sales or establish why the mix changed.
-
-## Architecture
+I organized the data into a vehicle population table, two lookup tables for vehicle configurations and locations, and three reusable reporting views.
 
 ```mermaid
-flowchart TD
-    R[Existing raw_ev_population] --> S[Existing stg_ev_population]
-    S --> F[portfolio_fct_ev_population: one row per vehicle]
-    F --> V[portfolio_dim_vehicle: 207 configurations]
-    F --> L[portfolio_dim_location: 1751 combinations]
-    F --> M[portfolio_mart_make_cohort]
-    F --> C[portfolio_mart_county]
-    F --> Q[portfolio_mart_range_coverage]
+flowchart LR
+    A[Raw EV data] --> B[Cleaned staging view]
+    B --> C[Vehicle population table]
+    C --> D[Vehicle and location lookups]
+    C --> E[Manufacturer analysis]
+    C --> F[County analysis]
+    C --> G[Range coverage analysis]
 ```
 
-The fact table retains frequently queried attributes as well as dimension keys. This intentional denormalization supports direct BigQuery reporting. Dimensions are extracted from the same normalized rows, and their keys include every attribute at the dimension's grain. JSON serialization distinguishes nulls and field boundaries before SHA256 hashing.
+The SQL standardizes names, handles missing range values, calculates manufacturer shares with window functions, and ranks manufacturers within each model year.
 
-The previous location dimension had 1,751 rows but only 1,267 distinct keys. A location key based on only ZIP/county cannot uniquely identify rows also distinguished by city, state, and utility. The corrected model constructs keys from the full location tuple and avoids joins during fact construction. Six SQL assertions verify source IDs, fact IDs, row preservation, both dimension keys, and the final join count.
+### Making the counts reliable
 
-## BigQuery implementation
+During validation, I found that the original fact table contained **713,043 rows for only 299,705 vehicles**. Nonunique location keys allowed vehicles to match multiple location records.
 
-All six new objects are deployed under `project-55002890-8a80-4708-ad0.raw_ev` with the `portfolio_` prefix. Existing tables remain available. The fact table uses integer model-year partitions from 1990 to 2040 and clustering on state, county, and make. This accommodates the observed 1999–2027 model years.
+I rebuilt the model with keys based on the complete location attributes and added **six SQL checks** for unique IDs, unique lookup keys, and consistent row counts. The corrected table contains one row per vehicle, including after joining both lookup tables.
 
-The warehouse is a full refresh of one existing snapshot. It is not a scheduled ingestion pipeline or a historical snapshot store. Rebuild the fact table and dimensions after refreshing the upstream data; reporting views then read the refreshed fact table. Permanent DDL statements are sequential, so a failed rebuild can leave partially refreshed objects; all statements and assertions must succeed before using the new version.
+### Reducing query scans
 
-## Reproduce
+I partitioned the vehicle table by model year and clustered it by state, county, and manufacturer. For a query covering King County vehicles from model years 2021–2024:
 
-1. Open BigQuery in the project above, using processing location `US`.
-2. Confirm the existing `raw_ev.stg_ev_population` view is available. Its required schema is documented in [the data contract](docs/data_contract.md).
-3. Run [sql/01_build.sql](sql/01_build.sql). It creates or replaces only the six `portfolio_` objects and runs the integrity assertions.
-4. Run the queries in [sql/02_analysis.sql](sql/02_analysis.sql) individually to explore manufacturer cohorts, county mix, range coverage, and utility labels.
-5. Run the two queries in [sql/03_benchmark.sql](sql/03_benchmark.sql) separately for performance measurement. Inspect cache status and actual job metrics.
+| Query source | Data scanned |
+|---|---:|
+| Original staging view | 10.05 MB |
+| Partitioned vehicle table | 4.19 MB |
 
-For another project, set that project as the default and provide the same source view in `raw_ev`. The repository contains aggregate results only; raw vehicle rows are not included.
+That is approximately **58% less data scanned** in the observed run. This is a scan-volume comparison, not a measured reduction in billing or execution time. [Benchmark details →](docs/performance.md)
 
-## Evidence and interpretation
+## Explore the project
 
-```text
-sql/
-  00_audit_existing.sql       # Identify count inflation and duplicate keys
-  01_build.sql                # Build the warehouse and run six assertions
-  02_analysis.sql             # Manufacturer, county, range, and utility queries
-  03_benchmark.sql            # Compare staging and partitioned-table scans
-  04_validate_benchmark.sql   # Reproduce result-set equality verification
-docs/                        # Findings, data contract, benchmark notes
-results/                     # Aggregate JSON evidence and CSV extracts
-```
+| File | Purpose |
+|---|---|
+| [Audit SQL](sql/00_audit_existing.sql) | Check the original tables for duplicate IDs and inflated counts |
+| [Warehouse build](sql/01_build.sql) | Create the tables and reporting views, and run integrity checks |
+| [Analysis queries](sql/02_analysis.sql) | Explore manufacturers, counties, range coverage, and utility labels |
+| [Benchmark queries](sql/03_benchmark.sql) | Compare scans through the staging view and partitioned table |
+| [Benchmark validation](sql/04_validate_benchmark.sql) | Compare the two benchmark result sets |
+| [Results](results/) | View aggregate findings as CSV and JSON |
 
-- [Findings and business implications](docs/findings.md)
-- [Benchmark results](docs/performance.md)
-- [Data contract and limitations](docs/data_contract.md)
-- [Initial audit](results/initial_audit.json), [verified findings](results/findings.json), and CSV extracts in `results/`
+## Running the SQL
 
-Build job: `job_JAFejgEmLAI2l0vByVUl1rJtXonI` (US). All 13 statements succeeded, including six assertions. Findings export: `job_wh9AMhnGYtPdIlzOH4Ug-ceZDKlo` (US).
+1. In BigQuery, choose your project and use the `US` processing location.
+2. Provide the cleaned input view as `raw_ev.stg_ev_population`, following the [source schema](docs/data_contract.md). The build scripts use this existing staging view as their starting point.
+3. Run `sql/01_build.sql` to create the warehouse and execute its six validation checks.
+4. Run individual queries from `sql/02_analysis.sql` to explore the results.
+5. Use `sql/03_benchmark.sql` and `sql/04_validate_benchmark.sql` to reproduce the scan comparison and check result equality.
 
-## Portfolio description
+## Data source
 
-Built a BigQuery EV population warehouse for 299,705 vehicles using SQL transformations, dimensional keys, integer-range partitioning, clustering, and six integrity checks. Diagnosed inflated fact counts caused by nonunique location keys and delivered validated manufacturer-cohort, county, and range-coverage reporting views.
+[Electric Vehicle Population Data — Washington State Department of Licensing](https://data.wa.gov/Transportation/Electric-Vehicle-Population-Data/f6w7-q2d2)
 
-## Sources
-
-- [Washington Department of Licensing: Electric Vehicle Population Data](https://data.wa.gov/Transportation/Electric-Vehicle-Population-Data/f6w7-q2d2). Zero electric range means the range has not been researched; it is not a zero-mile vehicle.
-- [BigQuery partitioned tables](https://docs.cloud.google.com/bigquery/docs/partitioned-tables)
-- [BigQuery clustered tables](https://docs.cloud.google.com/bigquery/docs/clustered-tables). Clustering gains depend on table/block size and the filters used; this small snapshot is not evidence of production-scale performance.
+This project analyzes an uploaded snapshot of the dataset. Raw vehicle-level records are not included in the repository. Additional modeling assumptions and data limitations are documented in the [data contract](docs/data_contract.md).
