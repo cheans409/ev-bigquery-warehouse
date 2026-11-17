@@ -1,0 +1,18 @@
+{
+  "observed_on": "2026-11-16",
+  "project": "project-55002890-8a80-4708-ad0",
+  "job_id": "job_2WIfisoIFLeS3_AWaPNgzK0vGW9p",
+  "location": "US",
+  "source_rows": 299705,
+  "source_unique_vehicle_ids": 299705,
+  "old_fact_rows": 713043,
+  "old_fact_unique_vehicle_ids": 299705,
+  "old_location_rows": 1751,
+  "old_location_unique_keys": 1267,
+  "wa_vehicles": 298916,
+  "all_states_bev": 241724,
+  "all_states_phev": 57981,
+  "all_states_null_cleaned_range": 196261,
+  "min_model_year": 1999,
+  "max_model_year": 2027
+}

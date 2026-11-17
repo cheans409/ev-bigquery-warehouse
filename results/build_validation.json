@@ -1,0 +1,18 @@
+{
+  "project": "project-55002890-8a80-4708-ad0",
+  "location": "US",
+  "build_job_id": "job_JAFejgEmLAI2l0vByVUl1rJtXonI",
+  "status": "SUCCESS",
+  "successful_statements": 13,
+  "successful_assertions": 6,
+  "source_unique_nonnull_ids": true,
+  "fact_unique_nonnull_ids": true,
+  "source_row_count_preserved": true,
+  "location_keys_unique": true,
+  "vehicle_configuration_keys_unique": true,
+  "dimension_joins_preserve_fact_count": true,
+  "findings_job_id": "job_wh9AMhnGYtPdIlzOH4Ug-ceZDKlo",
+  "benchmark_job_id": "job_ifi8xOJgGZGS4yv-6KHaxGkrr1aa",
+  "benchmark_console_baseline_mb": 10.05,
+  "benchmark_console_optimized_mb": 4.19
+}

@@ -1,0 +1,85 @@
+{
+  "total_vehicles": 299705,
+  "locations": 1751,
+  "vehicle_configs": 207,
+  "tesla_cohorts": [
+    {
+      "model_year": 2020,
+      "vehicles": 6811,
+      "cohort_share_pct": 56.03
+    },
+    {
+      "model_year": 2021,
+      "vehicles": 11360,
+      "cohort_share_pct": 54.64
+    },
+    {
+      "model_year": 2022,
+      "vehicles": 14044,
+      "cohort_share_pct": 46.56
+    },
+    {
+      "model_year": 2023,
+      "vehicles": 27607,
+      "cohort_share_pct": 44.94
+    },
+    {
+      "model_year": 2024,
+      "vehicles": 15287,
+      "cohort_share_pct": 31.03
+    },
+    {
+      "model_year": 2025,
+      "vehicles": 9739,
+      "cohort_share_pct": 26.37
+    }
+  ],
+  "top_counties": [
+    {
+      "county": "King",
+      "vehicles": 144257,
+      "bev_vehicles": 119449,
+      "phev_vehicles": 24808,
+      "bev_share_pct": 82.8,
+      "wa_fleet_share_pct": 48.26
+    },
+    {
+      "county": "Snohomish",
+      "vehicles": 37818,
+      "bev_vehicles": 31906,
+      "phev_vehicles": 5912,
+      "bev_share_pct": 84.37,
+      "wa_fleet_share_pct": 12.65
+    },
+    {
+      "county": "Pierce",
+      "vehicles": 25042,
+      "bev_vehicles": 19721,
+      "phev_vehicles": 5321,
+      "bev_share_pct": 78.75,
+      "wa_fleet_share_pct": 8.38
+    },
+    {
+      "county": "Clark",
+      "vehicles": 18782,
+      "bev_vehicles": 14506,
+      "phev_vehicles": 4276,
+      "bev_share_pct": 77.23,
+      "wa_fleet_share_pct": 6.28
+    },
+    {
+      "county": "Thurston",
+      "vehicles": 10985,
+      "bev_vehicles": 8510,
+      "phev_vehicles": 2475,
+      "bev_share_pct": 77.47,
+      "wa_fleet_share_pct": 3.67
+    }
+  ],
+  "wa_summary": {
+    "wa_vehicles": 298916,
+    "bev": 241125,
+    "phev": 57791,
+    "unknown_range": 195774
+  }
+}
